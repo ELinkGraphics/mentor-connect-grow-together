@@ -13,32 +13,30 @@ import Dashboard from "./pages/Dashboard";
 import MentorProfile from "./pages/MentorProfile";
 import NotFound from "./pages/NotFound";
 
-// Create QueryClient inside the component to ensure React context works correctly
-const App = () => {
+const App: React.FC = () => {
   // Create a new QueryClient instance inside the component function
+  // to ensure proper React context
   const queryClient = new QueryClient();
   
   return (
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/find-mentors" element={<FindMentors />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/mentor/:id" element={<MentorProfile />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/find-mentors" element={<FindMentors />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/mentor/:id" element={<MentorProfile />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 };
 
