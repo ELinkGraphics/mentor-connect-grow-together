@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import FindMentors from "./pages/FindMentors";
 import Dashboard from "./pages/Dashboard";
+import MentorProfile from "./pages/MentorProfile";
 import NotFound from "./pages/NotFound";
 
 // Create QueryClient inside the component to ensure React context works correctly
@@ -30,6 +31,7 @@ const App = () => {
               <Route path="/register" element={<Register />} />
               <Route path="/find-mentors" element={<FindMentors />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/mentor/:id" element={<MentorProfile />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

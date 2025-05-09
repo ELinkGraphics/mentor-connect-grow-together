@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Search, Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 // Sample mentor data
 const allMentors = [
@@ -273,7 +274,7 @@ const FindMentors: React.FC = () => {
                     
                     <div className="flex">
                       <Button className="w-full" asChild>
-                        <a href={`/mentor/${mentor.id}`}>View Profile</a>
+                        <Link to={`/mentor/${mentor.id}`}>View Profile</Link>
                       </Button>
                     </div>
                   </div>
