@@ -38,7 +38,7 @@ const Dashboard: React.FC = () => {
     {
       id: 2,
       from: 'Michael Chen',
-      preview: 'I've shared some resources for our next meeting.',
+      preview: "I've shared some resources for our next meeting.",
       timestamp: '2025-05-08T16:45:00',
       unread: false
     }
