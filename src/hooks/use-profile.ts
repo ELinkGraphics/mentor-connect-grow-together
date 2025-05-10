@@ -15,6 +15,10 @@ interface Profile {
   role: 'mentee' | 'mentor' | 'both';
   created_at: string;
   updated_at: string;
+  // Fields from the Supabase database schema
+  is_online?: boolean;
+  last_seen?: string;
+  username?: string;
 }
 
 export const useProfile = (userId?: string) => {
@@ -43,7 +47,26 @@ export const useProfile = (userId?: string) => {
         
         if (error) throw error;
         
-        setProfile(data as Profile);
+        // Make sure data matches our Profile interface
+        // If some fields are missing in the database, provide defaults
+        const profileData: Profile = {
+          id: data.id,
+          first_name: data.first_name || '',
+          last_name: data.last_name || '',
+          avatar_url: data.avatar_url,
+          bio: data.bio,
+          specialty: data.specialty,
+          years_experience: data.years_experience,
+          role: data.role || 'mentee',
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+          // Add other fields from database schema
+          is_online: data.is_online,
+          last_seen: data.last_seen,
+          username: data.username
+        };
+        
+        setProfile(profileData);
       } catch (err: any) {
         setError(err);
         console.error('Error fetching profile:', err);
