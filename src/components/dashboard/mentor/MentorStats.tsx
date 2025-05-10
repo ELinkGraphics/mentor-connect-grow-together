@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Calendar, MessageSquare, Award } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MentorStatsProps {
   activeMentees: number;
@@ -11,6 +12,7 @@ interface MentorStatsProps {
   averageRating: number;
   totalSessions: number;
   getTimeUntil: (dateString: string) => string;
+  loading?: boolean;
 }
 
 const MentorStats: React.FC<MentorStatsProps> = ({
@@ -20,7 +22,8 @@ const MentorStats: React.FC<MentorStatsProps> = ({
   unreadMessages,
   averageRating,
   totalSessions,
-  getTimeUntil
+  getTimeUntil,
+  loading = false
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -30,8 +33,17 @@ const MentorStats: React.FC<MentorStatsProps> = ({
           <Users className="h-4 w-4 text-mentor-primary" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{activeMentees}</div>
-          <p className="text-xs text-muted-foreground">Out of {totalMentees} total mentees</p>
+          {loading ? (
+            <>
+              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="h-4 w-32" />
+            </>
+          ) : (
+            <>
+              <div className="text-2xl font-bold">{activeMentees}</div>
+              <p className="text-xs text-muted-foreground">Out of {totalMentees} total mentees</p>
+            </>
+          )}
         </CardContent>
       </Card>
       <Card className="border-l-4 border-l-mentor-secondary">
@@ -40,8 +52,19 @@ const MentorStats: React.FC<MentorStatsProps> = ({
           <Calendar className="h-4 w-4 text-mentor-secondary" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{upcomingSessions.length}</div>
-          <p className="text-xs text-muted-foreground">Next session in {upcomingSessions.length > 0 ? getTimeUntil(upcomingSessions[0].date) : 'N/A'}</p>
+          {loading ? (
+            <>
+              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="h-4 w-32" />
+            </>
+          ) : (
+            <>
+              <div className="text-2xl font-bold">{upcomingSessions.length}</div>
+              <p className="text-xs text-muted-foreground">
+                Next session in {upcomingSessions.length > 0 ? getTimeUntil(upcomingSessions[0].scheduled_at) : 'N/A'}
+              </p>
+            </>
+          )}
         </CardContent>
       </Card>
       <Card className="border-l-4 border-l-mentee-primary">
@@ -50,8 +73,17 @@ const MentorStats: React.FC<MentorStatsProps> = ({
           <MessageSquare className="h-4 w-4 text-mentee-primary" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{unreadMessages}</div>
-          <p className="text-xs text-muted-foreground">From {unreadMessages} different mentees</p>
+          {loading ? (
+            <>
+              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="h-4 w-32" />
+            </>
+          ) : (
+            <>
+              <div className="text-2xl font-bold">{unreadMessages}</div>
+              <p className="text-xs text-muted-foreground">From {unreadMessages} different mentees</p>
+            </>
+          )}
         </CardContent>
       </Card>
       <Card className="border-l-4 border-l-mentee-secondary">
@@ -60,8 +92,17 @@ const MentorStats: React.FC<MentorStatsProps> = ({
           <Award className="h-4 w-4 text-mentee-secondary" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{averageRating} <span className="text-base">/ 5</span></div>
-          <p className="text-xs text-muted-foreground">Based on {totalSessions} sessions</p>
+          {loading ? (
+            <>
+              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="h-4 w-32" />
+            </>
+          ) : (
+            <>
+              <div className="text-2xl font-bold">{averageRating} <span className="text-base">/ 5</span></div>
+              <p className="text-xs text-muted-foreground">Based on {totalSessions} sessions</p>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

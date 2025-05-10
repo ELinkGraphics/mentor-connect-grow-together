@@ -14,97 +14,19 @@ import SessionsTab from '@/components/dashboard/mentor/SessionsTab';
 import MenteesTab from '@/components/dashboard/mentor/MenteesTab';
 import MessagesTab from '@/components/dashboard/mentor/MessagesTab';
 import ProfileTab from '@/components/dashboard/mentor/ProfileTab';
+import { useSessions } from '@/hooks/use-sessions';
+import { useMentorships } from '@/hooks/use-mentorships';
+import { useMessages } from '@/hooks/use-messages';
+import { useMentorStats } from '@/hooks/use-mentor-stats';
 
 const MentorDashboard: React.FC = () => {
-  // Placeholder data - in a real app this would come from an API
-  const upcomingSessions = [
-    {
-      id: 1,
-      menteeName: 'John Smith',
-      date: '2025-05-12T14:00:00',
-      duration: 60,
-      topic: 'UX Design Principles'
-    },
-    {
-      id: 2,
-      menteeName: 'Emma Johnson',
-      date: '2025-05-15T10:30:00',
-      duration: 45,
-      topic: 'Software Architecture Review'
-    },
-    {
-      id: 3,
-      menteeName: 'Alex Wong',
-      date: '2025-05-18T15:00:00',
-      duration: 30,
-      topic: 'Career Growth Planning'
-    }
-  ];
-  
-  const messages = [
-    {
-      id: 1,
-      from: 'John Smith',
-      preview: 'I have a question about tomorrow\'s session.',
-      timestamp: '2025-05-09T09:23:00',
-      unread: true
-    },
-    {
-      id: 2,
-      from: 'Emma Johnson',
-      preview: "Thanks for the resources you shared!",
-      timestamp: '2025-05-08T16:45:00',
-      unread: true
-    },
-    {
-      id: 3,
-      from: 'Alex Wong',
-      preview: "Looking forward to our next meeting.",
-      timestamp: '2025-05-07T11:20:00',
-      unread: false
-    }
-  ];
-  
-  const mentees = [
-    {
-      id: 1,
-      name: 'John Smith',
-      title: 'Frontend Developer',
-      company: 'TechCorp',
-      sessionsCompleted: 5,
-      status: 'active',
-      avatar: '👨‍💻'
-    },
-    {
-      id: 2,
-      name: 'Emma Johnson',
-      title: 'UX Designer',
-      company: 'DesignLab',
-      sessionsCompleted: 3,
-      status: 'active',
-      avatar: '👩‍🎨'
-    },
-    {
-      id: 3,
-      name: 'Alex Wong',
-      title: 'Product Manager',
-      company: 'InnovateCo',
-      sessionsCompleted: 1,
-      status: 'new',
-      avatar: '📊'
-    }
-  ];
-  
-  const mentorStats = {
-    totalMentees: 12,
-    activeMentees: 8,
-    totalSessions: 47,
-    completedHours: 58.5,
-    averageRating: 4.8,
-    topSkills: ['Leadership', 'UX Design', 'System Architecture', 'Career Planning']
-  };
-  
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Use real-time data from Supabase
+  const { sessions, loading: sessionsLoading, createSession, updateSession } = useSessions();
+  const { mentees, loading: menteesLoading, updateMentorshipStatus } = useMentorships();
+  const { messages, unreadCount, loading: messagesLoading, markAsRead, sendMessage } = useMessages();
+  const { stats, loading: statsLoading } = useMentorStats();
 
   // Format a date string for display
   const formatDate = (dateString: string) => {
@@ -137,7 +59,17 @@ const MentorDashboard: React.FC = () => {
     }
   };
 
-  const unreadMessagesCount = messages.filter(m => m.unread).length;
+  // Get upcoming sessions (scheduled sessions in the future)
+  const upcomingSessions = sessions
+    .filter(session => 
+      session.status === 'scheduled' && 
+      new Date(session.scheduled_at) > new Date()
+    )
+    .sort((a, b) => 
+      new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
+    );
+
+  const isLoading = sessionsLoading || menteesLoading || messagesLoading || statsLoading;
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background to-slate-50">
@@ -151,42 +83,71 @@ const MentorDashboard: React.FC = () => {
             <TabsContent value="overview" className="space-y-6">
               {/* Quick Stats */}
               <MentorStats 
-                activeMentees={mentorStats.activeMentees}
-                totalMentees={mentorStats.totalMentees}
+                activeMentees={stats.activeMentees}
+                totalMentees={stats.totalMentees}
                 upcomingSessions={upcomingSessions}
-                unreadMessages={unreadMessagesCount}
-                averageRating={mentorStats.averageRating}
-                totalSessions={mentorStats.totalSessions}
+                unreadMessages={unreadCount}
+                averageRating={stats.averageRating}
+                totalSessions={stats.totalSessions}
                 getTimeUntil={getTimeUntil}
+                loading={isLoading}
               />
               
               {/* Upcoming Sessions & Mentorship Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <UpcomingSessions sessions={upcomingSessions} formatDate={formatDate} />
-                <MentorshipStats stats={mentorStats} />
+                <UpcomingSessions 
+                  sessions={upcomingSessions} 
+                  formatDate={formatDate}
+                  loading={isLoading}
+                />
+                <MentorshipStats 
+                  stats={stats}
+                  loading={isLoading} 
+                />
               </div>
               
               {/* Active Mentees & Mentor Toolkit */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <ActiveMenteesList mentees={mentees} />
+                <ActiveMenteesList 
+                  mentees={mentees.filter(m => m.status === 'active')}
+                  loading={isLoading}
+                />
                 <MentorToolkit />
               </div>
             </TabsContent>
             
             <TabsContent value="sessions">
-              <SessionsTab upcomingSessions={upcomingSessions} formatDate={formatDate} />
+              <SessionsTab 
+                upcomingSessions={upcomingSessions} 
+                formatDate={formatDate}
+                allSessions={sessions}
+                createSession={createSession}
+                updateSession={updateSession}
+                loading={isLoading}
+              />
             </TabsContent>
             
             <TabsContent value="mentees">
-              <MenteesTab mentees={mentees} mentorStats={mentorStats} />
+              <MenteesTab 
+                mentees={mentees} 
+                mentorStats={stats}
+                updateMentorshipStatus={updateMentorshipStatus}
+                loading={isLoading}
+              />
             </TabsContent>
             
             <TabsContent value="messages">
-              <MessagesTab messages={messages} formatDate={formatDate} />
+              <MessagesTab 
+                messages={messages} 
+                formatDate={formatDate}
+                markAsRead={markAsRead}
+                sendMessage={sendMessage}
+                loading={isLoading}
+              />
             </TabsContent>
             
             <TabsContent value="profile">
-              <ProfileTab mentorStats={mentorStats} />
+              <ProfileTab mentorStats={stats} loading={isLoading} />
             </TabsContent>
           </DashboardTabs>
         </div>
