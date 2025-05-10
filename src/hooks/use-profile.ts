@@ -4,6 +4,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
+interface ProfileFromDB {
+  id: string;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+  is_online: boolean | null;
+  last_seen: string | null;
+  username: string;
+  first_name?: string;
+  last_name?: string;
+  bio?: string | null;
+  specialty?: string | null;
+  years_experience?: number | null;
+  role?: 'mentee' | 'mentor' | 'both';
+}
+
 interface Profile {
   id: string;
   first_name: string;
@@ -15,7 +31,6 @@ interface Profile {
   role: 'mentee' | 'mentor' | 'both';
   created_at: string;
   updated_at: string;
-  // Fields from the Supabase database schema
   is_online?: boolean;
   last_seen?: string;
   username?: string;
@@ -47,23 +62,24 @@ export const useProfile = (userId?: string) => {
         
         if (error) throw error;
         
-        // Make sure data matches our Profile interface
-        // If some fields are missing in the database, provide defaults
+        // Cast the data to our intermediate type to handle the fields
+        const dbProfile = data as ProfileFromDB;
+        
+        // Transform the database profile into our application profile model
         const profileData: Profile = {
-          id: data.id,
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-          avatar_url: data.avatar_url,
-          bio: data.bio,
-          specialty: data.specialty,
-          years_experience: data.years_experience,
-          role: data.role || 'mentee',
-          created_at: data.created_at,
-          updated_at: data.updated_at,
-          // Add other fields from database schema
-          is_online: data.is_online,
-          last_seen: data.last_seen,
-          username: data.username
+          id: dbProfile.id,
+          first_name: dbProfile.first_name || '',
+          last_name: dbProfile.last_name || '',
+          avatar_url: dbProfile.avatar_url,
+          bio: dbProfile.bio || null,
+          specialty: dbProfile.specialty || null,
+          years_experience: dbProfile.years_experience || null,
+          role: dbProfile.role || 'mentee',
+          created_at: dbProfile.created_at,
+          updated_at: dbProfile.updated_at,
+          is_online: dbProfile.is_online,
+          last_seen: dbProfile.last_seen,
+          username: dbProfile.username
         };
         
         setProfile(profileData);
