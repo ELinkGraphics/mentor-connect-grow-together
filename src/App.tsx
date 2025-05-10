@@ -12,7 +12,10 @@ import FindMentors from "./pages/FindMentors";
 import Dashboard from "./pages/Dashboard";
 import MentorDashboard from "./pages/MentorDashboard";
 import MentorProfile from "./pages/MentorProfile";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
+import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const App: React.FC = () => {
   // Create a new QueryClient instance inside the component function
@@ -25,17 +28,40 @@ const App: React.FC = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/find-mentors" element={<FindMentors />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/mentor-dashboard" element={<MentorDashboard />} />
-            <Route path="/mentor/:id" element={<MentorProfile />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/find-mentors" element={
+                <ProtectedRoute>
+                  <FindMentors />
+                </ProtectedRoute>
+              } />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/mentor-dashboard" element={
+                <ProtectedRoute requiredRole="mentor">
+                  <MentorDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/mentor/:id" element={
+                <ProtectedRoute>
+                  <MentorProfile />
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              } />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

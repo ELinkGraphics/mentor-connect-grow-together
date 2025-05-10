@@ -1,14 +1,14 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Register: React.FC = () => {
   const [fullName, setFullName] = useState('');
@@ -18,17 +18,22 @@ const Register: React.FC = () => {
   const [accountType, setAccountType] = useState('mentee');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const { signUp, user } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Example validation
+      // Form validation
       if (!fullName || !email || !password || !confirmPassword) {
         throw new Error('Please fill in all required fields.');
       }
@@ -41,22 +46,17 @@ const Register: React.FC = () => {
         throw new Error('You must agree to the terms and conditions.');
       }
       
-      // Success toast
-      toast({
-        title: "Registration Successful",
-        description: "Welcome to MentorConnect! Please check your email to verify your account.",
+      // Register the user
+      await signUp(email, password, {
+        fullName,
+        accountType
       });
-
-      // Redirect would happen here in a real app
-      console.log('Registration successful with:', { fullName, email, accountType });
+      
+      // Navigation will be handled after email verification
       
     } catch (error) {
-      // Error toast
-      toast({
-        variant: "destructive",
-        title: "Registration Failed",
-        description: error instanceof Error ? error.message : "Something went wrong",
-      });
+      // Error is handled in the signUp function
+      console.error('Registration error:', error);
     } finally {
       setIsLoading(false);
     }

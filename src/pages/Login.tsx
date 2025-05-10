@@ -1,50 +1,39 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const { signIn, user } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Example validation
-      if (!email || !password) {
-        throw new Error('Please fill in all fields.');
-      }
-      
-      // Success toast
-      toast({
-        title: "Login Successful",
-        description: "Welcome back to MentorConnect!",
-      });
-
-      // Redirect would happen here in a real app
-      console.log('Login successful with:', { email, password, rememberMe });
-      
+      await signIn(email, password);
+      // Navigation is handled in the signIn function
     } catch (error) {
-      // Error toast
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: error instanceof Error ? error.message : "Something went wrong",
-      });
+      // Error is handled in the signIn function
+      console.error('Login error:', error);
     } finally {
       setIsLoading(false);
     }
