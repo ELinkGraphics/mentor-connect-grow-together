@@ -137,11 +137,13 @@ export const useMessages = () => {
               };
               
               // Check if profiles data is available
-              if (msg.profiles && typeof msg.profiles === 'object' && 'id' in msg.profiles) {
+              if (msg.profiles && typeof msg.profiles === 'object') {
+                // Safely access properties with optional chaining
+                const profiles = msg.profiles as Record<string, any>;
                 senderInfo = {
-                  id: msg.profiles.id || msg.sender_id || '',
-                  username: msg.profiles.username || 'Unknown User',
-                  avatar_url: msg.profiles.avatar_url
+                  id: profiles?.id || msg.sender_id || '',
+                  username: profiles?.username || 'Unknown User',
+                  avatar_url: profiles?.avatar_url || null
                 };
               }
               

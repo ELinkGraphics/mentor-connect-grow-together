@@ -62,7 +62,7 @@ export const useSessions = () => {
           // Transform the data to match the Session interface
           const formattedSessions: Session[] = data.map(session => {
             // Make sure we have profile data before accessing it
-            const menteeProfile = session.profiles || {};
+            const profileData = session.profiles || {};
             
             return {
               id: session.id,
@@ -77,10 +77,10 @@ export const useSessions = () => {
               updated_at: session.updated_at,
               mentee: {
                 id: session.mentee_id,
-                username: menteeProfile.username || 'Unknown User',
-                avatar_url: menteeProfile.avatar_url,
-                first_name: menteeProfile.first_name,
-                last_name: menteeProfile.last_name
+                username: profileData.username || 'Unknown User',
+                avatar_url: profileData.avatar_url || null,
+                first_name: profileData.first_name || undefined,
+                last_name: profileData.last_name || undefined
               }
             };
           });

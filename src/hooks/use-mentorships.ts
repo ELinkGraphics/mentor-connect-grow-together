@@ -66,14 +66,14 @@ export const useMentorships = () => {
               }
               
               // Make sure profiles data is available before accessing properties
-              const menteeProfile = mentorship.profiles || {};
+              const profileData = mentorship.profiles || {};
               
               return {
                 id: mentorship.mentee_id,
-                username: menteeProfile.username || 'Unknown User',
-                avatar_url: menteeProfile.avatar_url,
-                first_name: menteeProfile.first_name,
-                last_name: menteeProfile.last_name,
+                username: profileData.username || 'Unknown User',
+                avatar_url: profileData.avatar_url || null,
+                first_name: profileData.first_name || undefined,
+                last_name: profileData.last_name || undefined,
                 sessions_completed: count || 0,
                 status: mentorship.status as 'active' | 'pending' | 'completed'
               };
