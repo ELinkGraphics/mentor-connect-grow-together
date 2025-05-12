@@ -32,47 +32,61 @@ export const useMentorships = () => {
       try {
         setLoading(true);
         
-        // Since we don't have the actual tables yet, create mock data
-        const mockMentees: Mentee[] = [
-          {
-            id: '1',
-            username: 'sarah_dev',
-            avatar_url: 'https://i.pravatar.cc/150?u=1',
-            first_name: 'Sarah',
-            last_name: 'Johnson',
-            title: 'Junior Developer',
-            company: 'TechStart',
-            sessions_completed: 4,
-            status: 'active'
-          },
-          {
-            id: '2',
-            username: 'mike_design',
-            avatar_url: 'https://i.pravatar.cc/150?u=2',
-            first_name: 'Michael',
-            last_name: 'Rodriguez',
-            title: 'UX Designer',
-            company: 'CreativeSolutions',
-            sessions_completed: 2,
-            status: 'active'
-          },
-          {
-            id: '3',
-            username: 'alex_pm',
-            avatar_url: 'https://i.pravatar.cc/150?u=3',
-            first_name: 'Alex',
-            last_name: 'Williams',
-            title: 'Product Manager',
-            company: 'InnovateCorp',
-            sessions_completed: 1,
-            status: 'pending'
-          }
-        ];
+        // Get mentorships with mentee profiles
+        const { data, error } = await supabase
+          .from('mentorships')
+          .select(`
+            status,
+            mentee_id,
+            mentee:mentee_id(
+              id,
+              username,
+              avatar_url,
+              first_name,
+              last_name
+            )
+          `)
+          .eq('mentor_id', user.id);
         
-        setMentees(mockMentees);
+        if (error) throw error;
+        
+        if (data) {
+          // Get completed sessions count for each mentee
+          const menteesWithSessions = await Promise.all(
+            data.map(async (mentorship) => {
+              const { count, error: sessionsError } = await supabase
+                .from('sessions')
+                .select('*', { count: 'exact', head: true })
+                .eq('mentor_id', user.id)
+                .eq('mentee_id', mentorship.mentee_id)
+                .eq('status', 'completed');
+                
+              if (sessionsError) {
+                console.error('Error fetching session count:', sessionsError);
+              }
+              
+              return {
+                id: mentorship.mentee.id,
+                username: mentorship.mentee.username,
+                avatar_url: mentorship.mentee.avatar_url,
+                first_name: mentorship.mentee.first_name,
+                last_name: mentorship.mentee.last_name,
+                sessions_completed: count || 0,
+                status: mentorship.status as 'active' | 'pending' | 'completed'
+              };
+            })
+          );
+          
+          setMentees(menteesWithSessions);
+        }
       } catch (err: any) {
         setError(err);
         console.error('Error fetching mentees:', err);
+        toast({
+          variant: "destructive",
+          title: "Error fetching mentees",
+          description: err.message
+        });
       } finally {
         setLoading(false);
       }
@@ -85,13 +99,48 @@ export const useMentorships = () => {
     if (!user?.id) return { success: false, error: new Error('User not authenticated') };
     
     try {
-      // Mock successful addition
+      const { data, error } = await supabase
+        .from('mentorships')
+        .insert([
+          {
+            mentor_id: user.id,
+            mentee_id: menteeId,
+            status: 'pending'
+          }
+        ])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
       toast({
         title: "Mentee Added",
         description: "The mentee has been added to your list"
       });
       
-      return { success: true, data: {} };
+      // Refresh mentees list
+      const { data: menteeData, error: menteeError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, first_name, last_name')
+        .eq('id', menteeId)
+        .single();
+        
+      if (!menteeError && menteeData) {
+        setMentees(prev => [
+          ...prev,
+          {
+            id: menteeData.id,
+            username: menteeData.username,
+            avatar_url: menteeData.avatar_url,
+            first_name: menteeData.first_name,
+            last_name: menteeData.last_name,
+            sessions_completed: 0,
+            status: 'pending'
+          }
+        ]);
+      }
+      
+      return { success: true, data };
     } catch (err: any) {
       toast({
         variant: "destructive",
@@ -105,7 +154,16 @@ export const useMentorships = () => {
 
   const updateMentorshipStatus = async (menteeId: string, status: 'active' | 'pending' | 'completed') => {
     try {
-      // Mock successful update
+      if (!user?.id) throw new Error('User not authenticated');
+      
+      const { error } = await supabase
+        .from('mentorships')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('mentor_id', user.id)
+        .eq('mentee_id', menteeId);
+      
+      if (error) throw error;
+      
       toast({
         title: "Status Updated",
         description: `Mentorship status changed to ${status}`

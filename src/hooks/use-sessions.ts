@@ -40,68 +40,27 @@ export const useSessions = () => {
       try {
         setLoading(true);
         
-        // Mock data for sessions until database is updated
-        const mockSessions: Session[] = [
-          {
-            id: '101',
-            mentor_id: user.id,
-            mentee_id: '1',
-            title: 'Career Path Planning',
-            description: 'Discussing long-term career goals and creating an action plan.',
-            scheduled_at: new Date(Date.now() + 86400000).toISOString(), // tomorrow
-            duration: 60,
-            status: 'scheduled',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            mentee: {
-              id: '1',
-              username: 'sarah_dev',
-              avatar_url: 'https://i.pravatar.cc/150?u=1',
-              first_name: 'Sarah',
-              last_name: 'Johnson'
-            }
-          },
-          {
-            id: '102',
-            mentor_id: user.id,
-            mentee_id: '2',
-            title: 'UX Design Review',
-            description: 'Reviewing portfolio and providing feedback.',
-            scheduled_at: new Date(Date.now() + 172800000).toISOString(), // day after tomorrow
-            duration: 45,
-            status: 'scheduled',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            mentee: {
-              id: '2',
-              username: 'mike_design',
-              avatar_url: 'https://i.pravatar.cc/150?u=2',
-              first_name: 'Michael',
-              last_name: 'Rodriguez'
-            }
-          },
-          {
-            id: '103',
-            mentor_id: user.id,
-            mentee_id: '1',
-            title: 'Technical Interview Prep',
-            description: 'Practice session for upcoming interviews.',
-            scheduled_at: new Date(Date.now() - 86400000).toISOString(), // yesterday
-            duration: 60,
-            status: 'completed',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            mentee: {
-              id: '1',
-              username: 'sarah_dev',
-              avatar_url: 'https://i.pravatar.cc/150?u=1',
-              first_name: 'Sarah',
-              last_name: 'Johnson'
-            }
-          }
-        ];
+        // Get sessions with mentee profiles
+        const { data, error } = await supabase
+          .from('sessions')
+          .select(`
+            *,
+            mentee:mentee_id(
+              id,
+              username,
+              avatar_url,
+              first_name,
+              last_name
+            )
+          `)
+          .eq('mentor_id', user.id)
+          .order('scheduled_at', { ascending: true });
         
-        setSessions(mockSessions);
+        if (error) throw error;
+        
+        if (data) {
+          setSessions(data);
+        }
       } catch (err: any) {
         setError(err);
         console.error('Error fetching sessions:', err);
@@ -116,38 +75,57 @@ export const useSessions = () => {
     };
 
     fetchSessions();
+    
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('sessions-changes')
+      .on('postgres_changes', 
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sessions',
+          filter: `mentor_id=eq.${user.id}`
+        }, 
+        () => {
+          // Refresh data when changes occur
+          fetchSessions();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user?.id]);
 
   const createSession = async (sessionData: Omit<Session, 'id' | 'created_at' | 'updated_at' | 'mentor_id'>) => {
     if (!user?.id) return { success: false, error: new Error('User not authenticated') };
     
     try {
-      // Generate a mock ID for the new session
-      const newId = Math.random().toString(36).substring(2, 11);
-      
-      // Create a new session object
-      const newSession: Session = {
-        id: newId,
+      const newSession = {
         mentor_id: user.id,
         mentee_id: sessionData.mentee_id,
         title: sessionData.title,
         description: sessionData.description,
         scheduled_at: sessionData.scheduled_at,
         duration: sessionData.duration,
-        status: sessionData.status,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        status: sessionData.status
       };
       
-      // Update local state
-      setSessions(prev => [...prev, newSession]);
+      const { data, error } = await supabase
+        .from('sessions')
+        .insert([newSession])
+        .select()
+        .single();
+      
+      if (error) throw error;
       
       toast({
         title: "Session Created",
         description: "The mentorship session has been scheduled"
       });
       
-      return { success: true, data: newSession };
+      return { success: true, data };
     } catch (err: any) {
       console.error('Error creating session:', err);
       toast({
@@ -162,12 +140,16 @@ export const useSessions = () => {
 
   const updateSession = async (sessionId: string, updates: Partial<Session>) => {
     try {
-      // Update local state
-      setSessions(prev => 
-        prev.map(session => 
-          session.id === sessionId ? { ...session, ...updates, updated_at: new Date().toISOString() } : session
-        )
-      );
+      const { error } = await supabase
+        .from('sessions')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sessionId)
+        .eq('mentor_id', user?.id);
+      
+      if (error) throw error;
       
       toast({
         title: "Session Updated",
