@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,16 +10,36 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+  const { user, loading, userRole } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+
+    if (!user) {
       navigate('/login', { replace: true });
+      return;
     }
-    // Role-based authorization would require an additional check here
-    // with the profile data, but we're keeping it simple for now
-  }, [user, loading, navigate, requiredRole]);
+
+    // Role-based authorization
+    if (requiredRole && userRole) {
+      const hasRequiredRole = 
+        userRole === requiredRole || 
+        userRole === 'both' ||  
+        requiredRole === 'both';
+      
+      if (!hasRequiredRole) {
+        // Redirect to appropriate dashboard based on user role
+        if (userRole === 'mentor') {
+          navigate('/mentor-dashboard', { replace: true });
+        } else if (userRole === 'mentee') {
+          navigate('/dashboard', { replace: true });
+        } else {
+          navigate('/', { replace: true });
+        }
+      }
+    }
+  }, [user, loading, navigate, requiredRole, userRole]);
 
   if (loading) {
     return (

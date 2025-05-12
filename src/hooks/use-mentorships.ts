@@ -16,7 +16,7 @@ export interface Mentee {
   status: 'active' | 'pending' | 'completed';
 }
 
-export const useMentorships = () => {
+export const useMentorships = (forMentee: boolean = false) => {
   const { user } = useAuth();
   const [mentees, setMentees] = useState<Mentee[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -28,37 +28,40 @@ export const useMentorships = () => {
       return;
     }
 
-    const fetchMentees = async () => {
+    const fetchMentorships = async () => {
       try {
         setLoading(true);
         
-        // Get mentorships with mentee profiles - using specific column hints to avoid ambiguity
+        // Get mentorships with appropriate profiles using specific column hints
         const { data, error } = await supabase
           .from('mentorships')
           .select(`
             status,
-            mentee_id,
-            profiles!mentorships_mentee_id_fkey(
+            ${forMentee ? 'mentor_id' : 'mentee_id'},
+            profiles!mentorships_${forMentee ? 'mentor' : 'mentee'}_id_fkey(
               id,
               username,
               avatar_url,
               first_name,
-              last_name
+              last_name,
+              specialty
             )
           `)
-          .eq('mentor_id', user.id);
+          .eq(forMentee ? 'mentee_id' : 'mentor_id', user.id);
         
         if (error) throw error;
         
         if (data) {
-          // Get completed sessions count for each mentee
-          const menteesWithSessions = await Promise.all(
+          // Get completed sessions count for each relationship
+          const mentorshipsWithData = await Promise.all(
             data.map(async (mentorship) => {
+              const userId = forMentee ? mentorship.mentor_id : mentorship.mentee_id;
+
               const { count, error: sessionsError } = await supabase
                 .from('sessions')
                 .select('*', { count: 'exact', head: true })
-                .eq('mentor_id', user.id)
-                .eq('mentee_id', mentorship.mentee_id)
+                .eq('mentor_id', forMentee ? userId : user.id)
+                .eq('mentee_id', forMentee ? user.id : userId)
                 .eq('status', 'completed');
                 
               if (sessionsError) {
@@ -69,25 +72,26 @@ export const useMentorships = () => {
               const profileData = mentorship.profiles as Record<string, any> || {};
               
               return {
-                id: mentorship.mentee_id,
+                id: userId,
                 username: profileData.username || 'Unknown User',
                 avatar_url: profileData.avatar_url || null,
                 first_name: profileData.first_name || undefined,
                 last_name: profileData.last_name || undefined,
+                specialty: profileData.specialty || undefined,
                 sessions_completed: count || 0,
                 status: mentorship.status as 'active' | 'pending' | 'completed'
               };
             })
           );
           
-          setMentees(menteesWithSessions);
+          setMentees(mentorshipsWithData);
         }
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching mentees:', err);
+        console.error('Error fetching mentorships:', err);
         toast({
           variant: "destructive",
-          title: "Error fetching mentees",
+          title: `Error fetching ${forMentee ? 'mentors' : 'mentees'}`,
           description: err.message
         });
       } finally {
@@ -95,8 +99,30 @@ export const useMentorships = () => {
       }
     };
 
-    fetchMentees();
-  }, [user?.id]);
+    fetchMentorships();
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('mentorships-changes')
+      .on('postgres_changes', 
+        {
+          event: '*',
+          schema: 'public',
+          table: 'mentorships',
+          filter: `${forMentee ? 'mentee_id' : 'mentor_id'}=eq.${user.id}`
+        }, 
+        (payload) => {
+          console.log('Real-time mentorship update received:', payload);
+          // Refresh data when changes occur
+          fetchMentorships();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, forMentee]);
 
   const addMentee = async (menteeId: string) => {
     if (!user?.id) return { success: false, error: new Error('User not authenticated') };
@@ -121,27 +147,7 @@ export const useMentorships = () => {
         description: "The mentee has been added to your list"
       });
       
-      // Refresh mentees list
-      const { data: menteeData, error: menteeError } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url, first_name, last_name')
-        .eq('id', menteeId)
-        .single();
-        
-      if (!menteeError && menteeData) {
-        setMentees(prev => [
-          ...prev,
-          {
-            id: menteeData.id,
-            username: menteeData.username,
-            avatar_url: menteeData.avatar_url,
-            first_name: menteeData.first_name,
-            last_name: menteeData.last_name,
-            sessions_completed: 0,
-            status: 'pending'
-          }
-        ]);
-      }
+      // Refresh mentees list through real-time - no need to update state here
       
       return { success: true, data };
     } catch (err: any) {
@@ -155,15 +161,15 @@ export const useMentorships = () => {
     }
   };
 
-  const updateMentorshipStatus = async (menteeId: string, status: 'active' | 'pending' | 'completed') => {
+  const updateMentorshipStatus = async (relationId: string, status: 'active' | 'pending' | 'completed') => {
     try {
       if (!user?.id) throw new Error('User not authenticated');
       
       const { error } = await supabase
         .from('mentorships')
         .update({ status, updated_at: new Date().toISOString() })
-        .eq('mentor_id', user.id)
-        .eq('mentee_id', menteeId);
+        .eq(forMentee ? 'mentee_id' : 'mentor_id', user.id)
+        .eq(forMentee ? 'mentor_id' : 'mentee_id', relationId);
       
       if (error) throw error;
       
@@ -172,12 +178,7 @@ export const useMentorships = () => {
         description: `Mentorship status changed to ${status}`
       });
       
-      // Update local state
-      setMentees(prev => 
-        prev.map(mentee => 
-          mentee.id === menteeId ? { ...mentee, status } : mentee
-        )
-      );
+      // Real-time updates will handle state updates
       
       return true;
     } catch (err: any) {

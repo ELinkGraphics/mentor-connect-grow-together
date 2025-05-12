@@ -92,6 +92,27 @@ export const useProfile = (userId?: string) => {
     };
 
     fetchProfile();
+    
+    // Set up real-time subscription for profile updates
+    const profileChannel = supabase
+      .channel('profiles-changes')
+      .on('postgres_changes', 
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${profileId}`
+        }, 
+        (payload) => {
+          console.log('Real-time profile update received:', payload);
+          fetchProfile();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(profileChannel);
+    };
   }, [profileId]);
 
   const updateProfile = async (updates: Partial<Profile>) => {
@@ -123,5 +144,29 @@ export const useProfile = (userId?: string) => {
     }
   };
 
-  return { profile, loading, error, updateProfile };
+  // Function to update online status
+  const updateOnlineStatus = async (isOnline: boolean) => {
+    try {
+      if (!profileId) throw new Error('User ID is required');
+      
+      const updates = {
+        is_online: isOnline,
+        last_seen: new Date().toISOString(),
+      };
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', profileId);
+      
+      if (error) throw error;
+      
+      return true;
+    } catch (err) {
+      console.error('Error updating online status:', err);
+      return false;
+    }
+  };
+
+  return { profile, loading, error, updateProfile, updateOnlineStatus };
 };

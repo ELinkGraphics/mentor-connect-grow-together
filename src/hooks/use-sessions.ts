@@ -24,7 +24,7 @@ export interface Session {
   };
 }
 
-export const useSessions = () => {
+export const useSessions = (forMentee: boolean = false) => {
   const { user } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -40,12 +40,12 @@ export const useSessions = () => {
       try {
         setLoading(true);
         
-        // Get sessions with mentee profiles using explicit foreign key reference
+        // Get sessions with appropriate profiles using explicit foreign key reference
         const { data, error } = await supabase
           .from('sessions')
           .select(`
             *,
-            profiles!sessions_mentee_id_fkey(
+            profiles!sessions_${forMentee ? 'mentor' : 'mentee'}_id_fkey(
               id,
               username,
               avatar_url,
@@ -53,7 +53,7 @@ export const useSessions = () => {
               last_name
             )
           `)
-          .eq('mentor_id', user.id)
+          .eq(forMentee ? 'mentee_id' : 'mentor_id', user.id)
           .order('scheduled_at', { ascending: true });
         
         if (error) throw error;
@@ -75,7 +75,7 @@ export const useSessions = () => {
               status: session.status as 'scheduled' | 'completed' | 'cancelled',
               created_at: session.created_at,
               updated_at: session.updated_at,
-              mentee: {
+              mentee: forMentee ? undefined : {
                 id: session.mentee_id,
                 username: profileData.username || 'Unknown User',
                 avatar_url: profileData.avatar_url || null,
@@ -110,9 +110,10 @@ export const useSessions = () => {
           event: '*',
           schema: 'public',
           table: 'sessions',
-          filter: `mentor_id=eq.${user.id}`
+          filter: `${forMentee ? 'mentee_id' : 'mentor_id'}=eq.${user.id}`
         }, 
-        () => {
+        (payload) => {
+          console.log('Real-time session update received:', payload);
           // Refresh data when changes occur
           fetchSessions();
         }
@@ -122,7 +123,7 @@ export const useSessions = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user?.id, forMentee]);
 
   const createSession = async (sessionData: Omit<Session, 'id' | 'created_at' | 'updated_at' | 'mentor_id'>) => {
     if (!user?.id) return { success: false, error: new Error('User not authenticated') };
@@ -173,7 +174,7 @@ export const useSessions = () => {
           updated_at: new Date().toISOString()
         })
         .eq('id', sessionId)
-        .eq('mentor_id', user?.id);
+        .eq(forMentee ? 'mentee_id' : 'mentor_id', user?.id);
       
       if (error) throw error;
       

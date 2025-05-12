@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,7 +19,7 @@ export interface Message {
   };
 }
 
-export const useMessages = () => {
+export const useMessages = (forMentee: boolean = false) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -35,11 +36,11 @@ export const useMessages = () => {
       try {
         setLoading(true);
         
-        // First get all mentorships where the user is a mentor
+        // First get all mentorships where the user is a mentor or mentee
         const { data: mentorships, error: mentorshipsError } = await supabase
           .from('mentorships')
           .select('id')
-          .eq('mentor_id', user.id);
+          .eq(forMentee ? 'mentee_id' : 'mentor_id', user.id);
         
         if (mentorshipsError) throw mentorshipsError;
         
@@ -60,22 +61,23 @@ export const useMessages = () => {
           .in('id', mentorshipIds);
         
         if (chatsError || !chatsData || chatsData.length === 0) {
-          // If there are no chats yet, use mock data
           console.log("No chats found, using mock data");
           
-          // Mock data for messages
+          // Mock data for messages - this will be replaced by real data as it becomes available
           const mockMessages: Message[] = [
             {
               id: '201',
               mentorship_id: mentorships[0]?.id || '301',
               sender_id: '1',
-              content: "Hi! I was hoping to discuss the feedback on my last project during our next session.",
+              content: forMentee
+                ? "Hi! I'm your mentor. Let me know if you have any questions."
+                : "Hi! I was hoping to discuss the feedback on my last project during our next session.",
               is_read: false,
               created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
               updated_at: new Date(Date.now() - 3600000).toISOString(),
               sender: {
                 id: '1',
-                username: 'sarah_dev',
+                username: forMentee ? 'mentor_coach' : 'sarah_dev',
                 avatar_url: 'https://i.pravatar.cc/150?u=1'
               }
             },
@@ -83,13 +85,15 @@ export const useMessages = () => {
               id: '202',
               mentorship_id: mentorships[0]?.id || '302',
               sender_id: '2',
-              content: "Thanks for the resources you shared last time. I've been going through them and have some questions.",
+              content: forMentee 
+                ? "I've reviewed your progress and have some suggestions for your next steps." 
+                : "Thanks for the resources you shared last time. I've been going through them and have some questions.",
               is_read: false,
               created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
               updated_at: new Date(Date.now() - 7200000).toISOString(),
               sender: {
                 id: '2',
-                username: 'mike_design',
+                username: forMentee ? 'expert_guide' : 'mike_design',
                 avatar_url: 'https://i.pravatar.cc/150?u=2'
               }
             }
@@ -175,13 +179,15 @@ export const useMessages = () => {
             id: '201',
             mentorship_id: mentorships[0]?.id || '301',
             sender_id: '1',
-            content: "Hi! I was hoping to discuss the feedback on my last project during our next session.",
+            content: forMentee
+              ? "Hi! I'm your mentor. Let me know if you have any questions."
+              : "Hi! I was hoping to discuss the feedback on my last project during our next session.",
             is_read: false,
             created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
             updated_at: new Date(Date.now() - 3600000).toISOString(),
             sender: {
               id: '1',
-              username: 'sarah_dev',
+              username: forMentee ? 'mentor_coach' : 'sarah_dev',
               avatar_url: 'https://i.pravatar.cc/150?u=1'
             }
           },
@@ -189,13 +195,15 @@ export const useMessages = () => {
             id: '202',
             mentorship_id: mentorships[0]?.id || '302',
             sender_id: '2',
-            content: "Thanks for the resources you shared last time. I've been going through them and have some questions.",
+            content: forMentee 
+              ? "I've reviewed your progress and have some suggestions for your next steps." 
+              : "Thanks for the resources you shared last time. I've been going through them and have some questions.",
             is_read: false,
             created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
             updated_at: new Date(Date.now() - 7200000).toISOString(),
             sender: {
               id: '2',
-              username: 'mike_design',
+              username: forMentee ? 'expert_guide' : 'mike_design',
               avatar_url: 'https://i.pravatar.cc/150?u=2'
             }
           }
@@ -213,13 +221,15 @@ export const useMessages = () => {
             id: '201',
             mentorship_id: '301',
             sender_id: '1',
-            content: "Hi! I was hoping to discuss the feedback on my last project during our next session.",
+            content: forMentee
+              ? "Hi! I'm your mentor. Let me know if you have any questions."
+              : "Hi! I was hoping to discuss the feedback on my last project during our next session.",
             is_read: false,
             created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
             updated_at: new Date(Date.now() - 3600000).toISOString(),
             sender: {
               id: '1',
-              username: 'sarah_dev',
+              username: forMentee ? 'mentor_coach' : 'sarah_dev',
               avatar_url: 'https://i.pravatar.cc/150?u=1'
             }
           },
@@ -227,13 +237,15 @@ export const useMessages = () => {
             id: '202',
             mentorship_id: '302',
             sender_id: '2',
-            content: "Thanks for the resources you shared last time. I've been going through them and have some questions.",
+            content: forMentee 
+              ? "I've reviewed your progress and have some suggestions for your next steps." 
+              : "Thanks for the resources you shared last time. I've been going through them and have some questions.",
             is_read: false,
             created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
             updated_at: new Date(Date.now() - 7200000).toISOString(),
             sender: {
               id: '2',
-              username: 'mike_design',
+              username: forMentee ? 'expert_guide' : 'mike_design',
               avatar_url: 'https://i.pravatar.cc/150?u=2'
             }
           }
@@ -247,7 +259,28 @@ export const useMessages = () => {
     };
 
     fetchMessages();
-  }, [user?.id]);
+    
+    // Set up real-time subscription for messages
+    const messageChannel = supabase
+      .channel('messages-changes')
+      .on('postgres_changes', 
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages'
+        }, 
+        (payload) => {
+          console.log('Real-time message update received:', payload);
+          // Refresh data when changes occur
+          fetchMessages();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(messageChannel);
+    };
+  }, [user?.id, forMentee]);
 
   const markAsRead = async (messageId: string) => {
     try {
@@ -340,39 +373,19 @@ export const useMessages = () => {
       
       if (error) throw error;
       
-      // Add message to local state
-      if (data) {
-        const newMessage: Message = {
-          id: data.id,
-          mentorship_id: data.chat_id,
-          sender_id: user.id,
-          content: data.content || '',
-          is_read: false,
-          created_at: data.created_at,
-          updated_at: data.updated_at,
-          sender: {
-            id: user.id,
-            username: 'you',
-            avatar_url: null
-          }
-        };
-        
-        setMessages(prev => [newMessage, ...prev]);
-      }
-      
       toast({
         title: "Message Sent",
         description: "Your message has been sent"
       });
       
-      return true;
+      return { success: true, data };
     } catch (err: any) {
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to send message"
       });
-      return false;
+      return { success: false, error: err };
     }
   };
 

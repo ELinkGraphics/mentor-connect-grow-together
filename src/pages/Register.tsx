@@ -18,15 +18,20 @@ const Register: React.FC = () => {
   const [accountType, setAccountType] = useState('mentee');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signUp, user } = useAuth();
+  const { signUp, user, userRole } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
-      navigate('/dashboard');
+    if (user && userRole) {
+      // Redirect based on role
+      if (userRole === 'mentor' || userRole === 'both') {
+        navigate('/mentor-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     }
-  }, [user, navigate]);
+  }, [user, userRole, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +57,7 @@ const Register: React.FC = () => {
         accountType
       });
       
-      // Navigation will be handled after email verification
+      // Navigation will be handled in the signUp function based on role
       
     } catch (error) {
       // Error is handled in the signUp function

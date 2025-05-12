@@ -14,15 +14,20 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, user } = useAuth();
+  const { signIn, user, userRole } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
-      navigate('/dashboard');
+    if (user && userRole) {
+      // Redirect based on role
+      if (userRole === 'mentor' || userRole === 'both') {
+        navigate('/mentor-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     }
-  }, [user, navigate]);
+  }, [user, userRole, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +35,7 @@ const Login: React.FC = () => {
     
     try {
       await signIn(email, password);
-      // Navigation is handled in the signIn function
+      // Navigation is handled in the signIn function based on role
     } catch (error) {
       // Error is handled in the signIn function
       console.error('Login error:', error);
