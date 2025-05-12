@@ -40,12 +40,12 @@ export const useSessions = () => {
       try {
         setLoading(true);
         
-        // Get sessions with mentee profiles
+        // Get sessions with mentee profiles using explicit foreign key reference
         const { data, error } = await supabase
           .from('sessions')
           .select(`
             *,
-            mentee:mentee_id(
+            profiles!sessions_mentee_id_fkey(
               id,
               username,
               avatar_url,
@@ -59,7 +59,33 @@ export const useSessions = () => {
         if (error) throw error;
         
         if (data) {
-          setSessions(data);
+          // Transform the data to match the Session interface
+          const formattedSessions: Session[] = data.map(session => {
+            // Make sure we have profile data before accessing it
+            const menteeProfile = session.profiles || {};
+            
+            return {
+              id: session.id,
+              mentor_id: session.mentor_id,
+              mentee_id: session.mentee_id,
+              title: session.title,
+              description: session.description,
+              scheduled_at: session.scheduled_at,
+              duration: session.duration,
+              status: session.status as 'scheduled' | 'completed' | 'cancelled',
+              created_at: session.created_at,
+              updated_at: session.updated_at,
+              mentee: {
+                id: session.mentee_id,
+                username: menteeProfile.username || 'Unknown User',
+                avatar_url: menteeProfile.avatar_url,
+                first_name: menteeProfile.first_name,
+                last_name: menteeProfile.last_name
+              }
+            };
+          });
+          
+          setSessions(formattedSessions);
         }
       } catch (err: any) {
         setError(err);

@@ -32,13 +32,13 @@ export const useMentorships = () => {
       try {
         setLoading(true);
         
-        // Get mentorships with mentee profiles
+        // Get mentorships with mentee profiles - using specific column hints to avoid ambiguity
         const { data, error } = await supabase
           .from('mentorships')
           .select(`
             status,
             mentee_id,
-            mentee:mentee_id(
+            profiles!mentorships_mentee_id_fkey(
               id,
               username,
               avatar_url,
@@ -65,12 +65,15 @@ export const useMentorships = () => {
                 console.error('Error fetching session count:', sessionsError);
               }
               
+              // Make sure profiles data is available before accessing properties
+              const menteeProfile = mentorship.profiles || {};
+              
               return {
-                id: mentorship.mentee.id,
-                username: mentorship.mentee.username,
-                avatar_url: mentorship.mentee.avatar_url,
-                first_name: mentorship.mentee.first_name,
-                last_name: mentorship.mentee.last_name,
+                id: mentorship.mentee_id,
+                username: menteeProfile.username || 'Unknown User',
+                avatar_url: menteeProfile.avatar_url,
+                first_name: menteeProfile.first_name,
+                last_name: menteeProfile.last_name,
                 sessions_completed: count || 0,
                 status: mentorship.status as 'active' | 'pending' | 'completed'
               };

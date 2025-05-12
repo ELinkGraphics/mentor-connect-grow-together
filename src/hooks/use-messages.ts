@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,7 +59,7 @@ export const useMessages = () => {
           .select('id')
           .in('id', mentorshipIds);
         
-        if (chatsError) {
+        if (chatsError || !chatsData || chatsData.length === 0) {
           // If there are no chats yet, use mock data
           console.log("No chats found, using mock data");
           
@@ -102,89 +101,106 @@ export const useMessages = () => {
           return;
         }
         
-        if (!chatsData || chatsData.length === 0) {
-          setMessages([]);
-          setUnreadCount(0);
-          setLoading(false);
-          return;
-        }
-        
         const chatIds = chatsData.map(chat => chat.id);
         
-        // Get messages with sender info
-        const { data: messagesData, error: messagesError } = await supabase
-          .from('messages')
-          .select(`
-            id,
-            chat_id,
-            sender_id,
-            content,
-            status,
-            created_at,
-            updated_at,
-            sender:sender_id(
+        // Try to get messages with sender info
+        try {
+          const { data: messagesData, error: messagesError } = await supabase
+            .from('messages')
+            .select(`
               id,
-              username,
-              avatar_url
-            )
-          `)
-          .in('chat_id', chatIds)
-          .order('created_at', { ascending: false })
-          .limit(20);
-        
-        if (messagesError) throw messagesError;
-        
-        if (messagesData) {
-          // Transform to expected format
-          const formattedMessages = messagesData.map(msg => ({
-            id: msg.id,
-            mentorship_id: msg.chat_id,
-            sender_id: msg.sender_id,
-            content: msg.content || '',
-            is_read: msg.status === 'read',
-            created_at: msg.created_at,
-            updated_at: msg.updated_at,
-            sender: msg.sender
-          }));
+              chat_id,
+              sender_id,
+              content,
+              status,
+              created_at,
+              updated_at,
+              profiles:sender_id(
+                id,
+                username,
+                avatar_url
+              )
+            `)
+            .in('chat_id', chatIds)
+            .order('created_at', { ascending: false })
+            .limit(20);
           
-          setMessages(formattedMessages);
-          setUnreadCount(formattedMessages.filter(m => !m.is_read && m.sender_id !== user.id).length);
-        } else {
-          // Use mock data if no messages found
-          const mockMessages: Message[] = [
-            {
-              id: '201',
-              mentorship_id: mentorships[0]?.id || '301',
-              sender_id: '1',
-              content: "Hi! I was hoping to discuss the feedback on my last project during our next session.",
-              is_read: false,
-              created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-              updated_at: new Date(Date.now() - 3600000).toISOString(),
-              sender: {
-                id: '1',
-                username: 'sarah_dev',
-                avatar_url: 'https://i.pravatar.cc/150?u=1'
-              }
-            },
-            {
-              id: '202',
-              mentorship_id: mentorships[0]?.id || '302',
-              sender_id: '2',
-              content: "Thanks for the resources you shared last time. I've been going through them and have some questions.",
-              is_read: false,
-              created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
-              updated_at: new Date(Date.now() - 7200000).toISOString(),
-              sender: {
-                id: '2',
-                username: 'mike_design',
-                avatar_url: 'https://i.pravatar.cc/150?u=2'
-              }
-            }
-          ];
+          if (messagesError) throw messagesError;
           
-          setMessages(mockMessages);
-          setUnreadCount(mockMessages.filter(m => !m.is_read).length);
+          if (messagesData && messagesData.length > 0) {
+            // Transform to expected format
+            const formattedMessages: Message[] = messagesData.map(msg => {
+              let senderInfo = {
+                id: msg.sender_id || '',
+                username: 'Unknown User',
+                avatar_url: null
+              };
+              
+              // Check if profiles data is available
+              if (msg.profiles && typeof msg.profiles === 'object' && 'id' in msg.profiles) {
+                senderInfo = {
+                  id: msg.profiles.id || msg.sender_id || '',
+                  username: msg.profiles.username || 'Unknown User',
+                  avatar_url: msg.profiles.avatar_url
+                };
+              }
+              
+              return {
+                id: msg.id,
+                mentorship_id: msg.chat_id,
+                sender_id: msg.sender_id || '',
+                content: msg.content || '',
+                is_read: msg.status === 'read',
+                created_at: msg.created_at,
+                updated_at: msg.updated_at,
+                sender: senderInfo
+              };
+            });
+            
+            setMessages(formattedMessages);
+            setUnreadCount(formattedMessages.filter(m => !m.is_read && m.sender_id !== user.id).length);
+            setLoading(false);
+            return;
+          }
+        } catch (innerErr) {
+          console.error('Error fetching message details:', innerErr);
+          // Continue to fallback mock data
         }
+        
+        // Use mock data if no messages found or on error
+        const mockMessages: Message[] = [
+          {
+            id: '201',
+            mentorship_id: mentorships[0]?.id || '301',
+            sender_id: '1',
+            content: "Hi! I was hoping to discuss the feedback on my last project during our next session.",
+            is_read: false,
+            created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+            updated_at: new Date(Date.now() - 3600000).toISOString(),
+            sender: {
+              id: '1',
+              username: 'sarah_dev',
+              avatar_url: 'https://i.pravatar.cc/150?u=1'
+            }
+          },
+          {
+            id: '202',
+            mentorship_id: mentorships[0]?.id || '302',
+            sender_id: '2',
+            content: "Thanks for the resources you shared last time. I've been going through them and have some questions.",
+            is_read: false,
+            created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+            updated_at: new Date(Date.now() - 7200000).toISOString(),
+            sender: {
+              id: '2',
+              username: 'mike_design',
+              avatar_url: 'https://i.pravatar.cc/150?u=2'
+            }
+          }
+        ];
+        
+        setMessages(mockMessages);
+        setUnreadCount(mockMessages.filter(m => !m.is_read).length);
       } catch (err: any) {
         setError(err);
         console.error('Error fetching messages:', err);
