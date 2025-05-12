@@ -65,8 +65,8 @@ export const useMentorships = () => {
                 console.error('Error fetching session count:', sessionsError);
               }
               
-              // Make sure profiles data is available before accessing properties
-              const profileData = mentorship.profiles || {};
+              // Type the profiles data properly to avoid TypeScript errors
+              const profileData = mentorship.profiles as Record<string, any> || {};
               
               return {
                 id: mentorship.mentee_id,

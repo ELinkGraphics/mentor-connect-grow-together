@@ -61,8 +61,8 @@ export const useSessions = () => {
         if (data) {
           // Transform the data to match the Session interface
           const formattedSessions: Session[] = data.map(session => {
-            // Make sure we have profile data before accessing it
-            const profileData = session.profiles || {};
+            // Type the profiles data properly to avoid TypeScript errors
+            const profileData = session.profiles as Record<string, any> || {};
             
             return {
               id: session.id,
